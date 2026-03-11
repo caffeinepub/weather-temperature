@@ -18,8 +18,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import type { Weather } from "./backend";
-import { useGetWeather } from "./hooks/useQueries";
+import { type Weather, useGetWeather } from "./hooks/useQueries";
 
 const queryClient = new QueryClient();
 
@@ -76,7 +75,6 @@ function LoadingScreen({ onDone }: { onDone: () => void }) {
       transition={{ duration: 0.7, ease: "easeInOut" }}
       data-ocid="app.loading_state"
     >
-      {/* Background orbs */}
       <div
         className="absolute w-96 h-96 rounded-full"
         style={{
@@ -101,7 +99,6 @@ function LoadingScreen({ onDone }: { onDone: () => void }) {
       />
 
       <div className="relative z-10 flex flex-col items-center gap-8">
-        {/* Animated weather icon cluster */}
         <motion.div
           className="relative"
           animate={{ y: [0, -10, 0] }}
@@ -141,7 +138,6 @@ function LoadingScreen({ onDone }: { onDone: () => void }) {
           </div>
         </motion.div>
 
-        {/* App name */}
         <div className="text-center">
           <motion.h1
             className="font-fraunces text-5xl font-bold tracking-tight"
@@ -156,7 +152,7 @@ function LoadingScreen({ onDone }: { onDone: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.6 }}
           >
-            Skyveil
+            TRUE TEMP
           </motion.h1>
           <motion.p
             className="text-sm mt-2 font-sora tracking-[0.25em] uppercase"
@@ -165,11 +161,10 @@ function LoadingScreen({ onDone }: { onDone: () => void }) {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 0.6 }}
           >
-            Weather Intelligence
+            Real Weather. Real India.
           </motion.p>
         </div>
 
-        {/* Loading dots */}
         <motion.div
           className="flex gap-2"
           initial={{ opacity: 0 }}
@@ -243,9 +238,7 @@ function WeatherDashboard({ weather }: { weather: Weather }) {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      {/* Hero temperature section */}
       <div className="glass-card rounded-3xl p-8 mb-4 relative overflow-hidden">
-        {/* Background blur orb */}
         <div
           className="absolute -right-16 -top-16 w-64 h-64 rounded-full"
           style={{
@@ -256,7 +249,6 @@ function WeatherDashboard({ weather }: { weather: Weather }) {
         />
 
         <div className="relative z-10">
-          {/* City & condition row */}
           <motion.div
             className="flex items-center justify-between mb-6"
             initial={{ opacity: 0, y: -10 }}
@@ -265,11 +257,7 @@ function WeatherDashboard({ weather }: { weather: Weather }) {
           >
             <div className="flex items-center gap-2">
               <MapPin
-                style={{
-                  width: 18,
-                  height: 18,
-                  color: "oklch(0.72 0.18 200)",
-                }}
+                style={{ width: 18, height: 18, color: "oklch(0.72 0.18 200)" }}
               />
               <span
                 className="font-fraunces text-2xl font-semibold"
@@ -295,7 +283,6 @@ function WeatherDashboard({ weather }: { weather: Weather }) {
             </div>
           </motion.div>
 
-          {/* Big temperature */}
           <motion.div
             className="flex items-start gap-4 mb-2"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -340,7 +327,6 @@ function WeatherDashboard({ weather }: { weather: Weather }) {
             </div>
           </motion.div>
 
-          {/* Feels like */}
           <motion.p
             className="text-sm font-sora"
             style={{ color: "oklch(0.6 0.08 220)" }}
@@ -356,7 +342,6 @@ function WeatherDashboard({ weather }: { weather: Weather }) {
         </div>
       </div>
 
-      {/* Detail grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <WeatherDetail
           icon={<Droplets style={{ width: 16, height: 16 }} />}
@@ -384,7 +369,6 @@ function WeatherDashboard({ weather }: { weather: Weather }) {
         />
       </div>
 
-      {/* Timezone */}
       <motion.p
         className="text-center text-xs mt-4 font-sora tracking-wider uppercase"
         style={{ color: "oklch(0.45 0.06 220)" }}
@@ -400,8 +384,8 @@ function WeatherDashboard({ weather }: { weather: Weather }) {
 
 function WeatherApp() {
   const [showLoading, setShowLoading] = useState(true);
-  const [searchInput, setSearchInput] = useState("London");
-  const [activeCity, setActiveCity] = useState("London");
+  const [searchInput, setSearchInput] = useState("Mumbai");
+  const [activeCity, setActiveCity] = useState("Mumbai");
 
   const {
     data: weather,
@@ -426,7 +410,6 @@ function WeatherApp() {
       </AnimatePresence>
 
       <main className="flex-1 flex flex-col items-center px-4 py-12">
-        {/* Header */}
         <motion.header
           className="mb-10 text-center"
           initial={{ opacity: 0, y: -20 }}
@@ -443,17 +426,16 @@ function WeatherApp() {
               WebkitTextFillColor: "transparent",
             }}
           >
-            Skyveil
+            TRUE TEMP
           </h1>
           <p
             className="text-xs mt-1 tracking-[0.3em] uppercase font-sora"
             style={{ color: "oklch(0.5 0.08 220)" }}
           >
-            Live weather conditions
+            Real weather, right now
           </p>
         </motion.header>
 
-        {/* Search */}
         <motion.form
           className="w-full max-w-lg mb-10"
           onSubmit={handleSearch}
@@ -465,11 +447,7 @@ function WeatherApp() {
             <div className="relative flex-1">
               <MapPin
                 className="absolute left-3 top-1/2 -translate-y-1/2"
-                style={{
-                  width: 16,
-                  height: 16,
-                  color: "oklch(0.58 0.12 220)",
-                }}
+                style={{ width: 16, height: 16, color: "oklch(0.58 0.12 220)" }}
               />
               <Input
                 data-ocid="search.search_input"
@@ -503,7 +481,6 @@ function WeatherApp() {
           </div>
         </motion.form>
 
-        {/* Content area */}
         <div className="w-full flex justify-center">
           <AnimatePresence mode="wait">
             {isLoading && (
@@ -516,17 +493,10 @@ function WeatherApp() {
                 exit={{ opacity: 0 }}
               >
                 <div
-                  className="w-16 h-16 rounded-full border-2 border-t-transparent animate-spin"
+                  className="w-16 h-16 rounded-full border-2 animate-spin"
                   style={{
                     borderColor: "oklch(0.6 0.15 220 / 0.3)",
                     borderTopColor: "transparent",
-                  }}
-                />
-                <div
-                  className="w-3 h-3 rounded-full animate-spin"
-                  style={{
-                    borderTop: "2px solid oklch(0.72 0.18 200)",
-                    position: "absolute",
                   }}
                 />
                 <p
@@ -579,7 +549,6 @@ function WeatherApp() {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="py-4 text-center">
         <p
           className="text-xs font-sora"
