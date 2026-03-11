@@ -1,0 +1,176 @@
+@font-face {
+  font-family: "Fraunces";
+  src: url("/assets/fonts/Fraunces.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Sora";
+  src: url("/assets/fonts/Sora.woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0.14 0.025 265;
+    --foreground: 0.96 0.008 265;
+
+    --card: 0.18 0.03 265;
+    --card-foreground: 0.96 0.008 265;
+
+    --popover: 0.16 0.028 265;
+    --popover-foreground: 0.96 0.008 265;
+
+    --primary: 0.72 0.18 200;
+    --primary-foreground: 0.12 0.02 265;
+
+    --secondary: 0.22 0.04 270;
+    --secondary-foreground: 0.92 0.008 265;
+
+    --muted: 0.2 0.035 265;
+    --muted-foreground: 0.62 0.04 265;
+
+    --accent: 0.78 0.14 60;
+    --accent-foreground: 0.12 0.02 60;
+
+    --destructive: 0.55 0.22 25;
+    --destructive-foreground: 0.96 0.008 265;
+
+    --border: 0.28 0.04 265;
+    --input: 0.22 0.04 265;
+    --ring: 0.72 0.18 200;
+
+    --radius: 1rem;
+
+    --chart-1: 0.72 0.18 200;
+    --chart-2: 0.65 0.16 280;
+    --chart-3: 0.78 0.14 60;
+    --chart-4: 0.62 0.2 150;
+    --chart-5: 0.55 0.22 25;
+
+    --sidebar: 0.16 0.028 265;
+    --sidebar-foreground: 0.96 0.008 265;
+    --sidebar-primary: 0.72 0.18 200;
+    --sidebar-primary-foreground: 0.12 0.02 265;
+    --sidebar-accent: 0.22 0.04 270;
+    --sidebar-accent-foreground: 0.92 0.008 265;
+    --sidebar-border: 0.28 0.04 265;
+    --sidebar-ring: 0.72 0.18 200;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sora;
+    min-height: 100vh;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Atmospheric gradient background */
+.weather-bg {
+  background: radial-gradient(
+      ellipse at 20% 20%,
+      oklch(0.28 0.12 250 / 0.6) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at 80% 80%,
+      oklch(0.22 0.1 290 / 0.5) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at 50% 100%,
+      oklch(0.18 0.08 230 / 0.4) 0%,
+      transparent 50%
+    ), oklch(0.11 0.025 260);
+}
+
+/* Glassmorphism card */
+.glass-card {
+  background: oklch(0.18 0.04 265 / 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid oklch(0.35 0.06 265 / 0.3);
+  box-shadow: 0 8px 32px oklch(0.05 0.02 265 / 0.5), inset 0 1px 0
+    oklch(0.5 0.05 265 / 0.15);
+}
+
+/* Loading orb pulse */
+@keyframes orb-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes orb-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-orb-pulse {
+  animation: orb-pulse 2s ease-in-out infinite;
+}
+
+.temp-shimmer {
+  background: linear-gradient(
+    90deg,
+    oklch(0.85 0.06 200) 0%,
+    oklch(0.95 0.04 60) 30%,
+    oklch(0.85 0.06 200) 60%,
+    oklch(0.75 0.12 200) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
