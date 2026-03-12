@@ -10,6 +10,8 @@ import {
   CloudSnow,
   Droplets,
   Eye,
+  Loader2,
+  LocateFixed,
   MapPin,
   Search,
   Sun,
@@ -386,6 +388,8 @@ function WeatherApp() {
   const [showLoading, setShowLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("Mumbai");
   const [activeCity, setActiveCity] = useState("Mumbai");
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const {
     data: weather,
@@ -397,7 +401,58 @@ function WeatherApp() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = searchInput.trim();
-    if (trimmed) setActiveCity(trimmed);
+    if (trimmed) {
+      setLocationError(null);
+      setActiveCity(trimmed);
+    }
+  };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setLocating(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { "Accept-Language": "en" } },
+          );
+          if (!res.ok) throw new Error("Reverse geocoding failed");
+          const data = await res.json();
+          const city =
+            data.address?.city ||
+            data.address?.town ||
+            data.address?.village ||
+            data.address?.county ||
+            data.address?.state;
+          if (!city) throw new Error("Could not determine city from location.");
+          setSearchInput(city);
+          setActiveCity(city);
+        } catch (err) {
+          setLocationError(
+            err instanceof Error ? err.message : "Could not get location.",
+          );
+        } finally {
+          setLocating(false);
+        }
+      },
+      (err) => {
+        setLocating(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationError(
+            "Location access denied. Please allow it in your browser settings.",
+          );
+        } else {
+          setLocationError("Unable to retrieve your location.");
+        }
+      },
+      { timeout: 10000 },
+    );
   };
 
   return (
@@ -436,50 +491,101 @@ function WeatherApp() {
           </p>
         </motion.header>
 
-        <motion.form
+        <motion.div
           className="w-full max-w-lg mb-10"
-          onSubmit={handleSearch}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35, duration: 0.5 }}
         >
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <MapPin
-                className="absolute left-3 top-1/2 -translate-y-1/2"
-                style={{ width: 16, height: 16, color: "oklch(0.58 0.12 220)" }}
-              />
-              <Input
-                data-ocid="search.search_input"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Enter city name…"
-                className="pl-9 h-12 font-sora text-sm"
+          <form onSubmit={handleSearch}>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <MapPin
+                  className="absolute left-3 top-1/2 -translate-y-1/2"
+                  style={{
+                    width: 16,
+                    height: 16,
+                    color: "oklch(0.58 0.12 220)",
+                  }}
+                />
+                <Input
+                  data-ocid="search.search_input"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Enter city name…"
+                  className="pl-9 h-12 font-sora text-sm"
+                  style={{
+                    background: "oklch(0.18 0.04 265 / 0.6)",
+                    border: "1px solid oklch(0.35 0.06 265 / 0.4)",
+                    backdropFilter: "blur(10px)",
+                    color: "oklch(0.92 0.04 220)",
+                  }}
+                />
+              </div>
+              <Button
+                data-ocid="search.submit_button"
+                type="submit"
+                disabled={isLoading || locating}
+                className="h-12 px-5 font-sora text-sm"
                 style={{
-                  background: "oklch(0.18 0.04 265 / 0.6)",
-                  border: "1px solid oklch(0.35 0.06 265 / 0.4)",
-                  backdropFilter: "blur(10px)",
-                  color: "oklch(0.92 0.04 220)",
+                  background:
+                    "linear-gradient(135deg, oklch(0.55 0.18 220), oklch(0.48 0.2 260))",
+                  border: "none",
+                  boxShadow: "0 4px 20px oklch(0.55 0.18 220 / 0.35)",
                 }}
-              />
+              >
+                <Search style={{ width: 16, height: 16, marginRight: 6 }} />
+                Search
+              </Button>
+              <Button
+                data-ocid="location.primary_button"
+                type="button"
+                onClick={handleGetLocation}
+                disabled={locating || isLoading}
+                className="h-12 px-4 font-sora text-sm shrink-0"
+                title="Use my current location"
+                style={{
+                  background: locating
+                    ? "oklch(0.22 0.06 200 / 0.7)"
+                    : "oklch(0.22 0.06 200 / 0.55)",
+                  border: "1px solid oklch(0.45 0.14 200 / 0.45)",
+                  backdropFilter: "blur(10px)",
+                  boxShadow: locating
+                    ? "0 0 20px oklch(0.55 0.18 200 / 0.4)"
+                    : "0 4px 16px oklch(0.55 0.18 200 / 0.2)",
+                  color: "oklch(0.78 0.14 200)",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {locating ? (
+                  <Loader2
+                    data-ocid="location.loading_state"
+                    style={{ width: 16, height: 16 }}
+                    className="animate-spin"
+                  />
+                ) : (
+                  <LocateFixed style={{ width: 16, height: 16 }} />
+                )}
+              </Button>
             </div>
-            <Button
-              data-ocid="search.submit_button"
-              type="submit"
-              disabled={isLoading}
-              className="h-12 px-5 font-sora text-sm"
-              style={{
-                background:
-                  "linear-gradient(135deg, oklch(0.55 0.18 220), oklch(0.48 0.2 260))",
-                border: "none",
-                boxShadow: "0 4px 20px oklch(0.55 0.18 220 / 0.35)",
-              }}
-            >
-              <Search style={{ width: 16, height: 16, marginRight: 6 }} />
-              Search
-            </Button>
-          </div>
-        </motion.form>
+          </form>
+
+          <AnimatePresence>
+            {locationError && (
+              <motion.p
+                data-ocid="location.error_state"
+                className="mt-2 text-xs font-sora px-1"
+                style={{ color: "oklch(0.68 0.18 25)" }}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.2 }}
+              >
+                {locationError}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
         <div className="w-full flex justify-center">
           <AnimatePresence mode="wait">
