@@ -443,15 +443,25 @@ function WeatherApp() {
       },
       (err) => {
         setLocating(false);
-        if (err.code === err.PERMISSION_DENIED) {
+        if (err.code === 1) {
           setLocationError(
-            "Location access denied. Please allow it in your browser settings.",
+            "Location access denied. Please allow location permission in your browser settings.",
+          );
+        } else if (err.code === 2) {
+          setLocationError(
+            "Location unavailable. Please check your device's location settings are enabled.",
+          );
+        } else if (err.code === 3) {
+          setLocationError(
+            "Location request timed out. Try again or search manually.",
           );
         } else {
-          setLocationError("Unable to retrieve your location.");
+          setLocationError(
+            "Could not get your location. Try searching manually.",
+          );
         }
       },
-      { timeout: 10000 },
+      { timeout: 15000, maximumAge: 60000, enableHighAccuracy: false },
     );
   };
 

@@ -14,23 +14,61 @@ export interface Weather {
   timezone: string;
 }
 
-async function fetchWeather(cityName: string): Promise<Weather> {
-  // Step 1: geocode
-  const geoRes = await fetch(
+async function geocodeWithOpenMeteo(
+  cityName: string,
+): Promise<{ latitude: number; longitude: number; name: string } | null> {
+  const res = await fetch(
     `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`,
   );
-  if (!geoRes.ok) throw new Error("Geocoding request failed");
-  const geoData = await geoRes.json();
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data.results || data.results.length === 0) return null;
+  const { latitude, longitude, name } = data.results[0];
+  return { latitude, longitude, name };
+}
 
-  if (!geoData.results || geoData.results.length === 0) {
+async function geocodeWithNominatim(
+  cityName: string,
+): Promise<{ latitude: number; longitude: number; name: string } | null> {
+  const query = `${cityName}, India`;
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=1`,
+    { headers: { "Accept-Language": "en" } },
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data || data.length === 0) return null;
+  const item = data[0];
+  const addr = item.address || {};
+  const name =
+    addr.village ||
+    addr.hamlet ||
+    addr.suburb ||
+    addr.town ||
+    addr.city ||
+    item.display_name.split(",")[0];
+  return {
+    latitude: Number.parseFloat(item.lat),
+    longitude: Number.parseFloat(item.lon),
+    name,
+  };
+}
+
+async function fetchWeather(cityName: string): Promise<Weather> {
+  let geo = await geocodeWithOpenMeteo(cityName);
+
+  if (!geo) {
+    geo = await geocodeWithNominatim(cityName);
+  }
+
+  if (!geo) {
     throw new Error(
-      `City "${cityName}" not found. Please check the spelling and try again.`,
+      `Location "${cityName}" not found. Please check the spelling and try again.`,
     );
   }
 
-  const { latitude, longitude, name, timezone } = geoData.results[0];
+  const { latitude, longitude, name } = geo;
 
-  // Step 2: weather
   const weatherRes = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`,
   );
@@ -51,7 +89,7 @@ async function fetchWeather(cityName: string): Promise<Weather> {
     humidity: current.relative_humidity_2m,
     windSpeed: current.wind_speed_10m,
     weatherCode: BigInt(current.weather_code),
-    timezone: timezone ?? weatherData.timezone ?? "UTC",
+    timezone: weatherData.timezone ?? "UTC",
   };
 }
 
