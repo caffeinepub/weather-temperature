@@ -8,6 +8,22 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const UserRole = IDL.Variant({
+  'admin' : IDL.Null,
+  'user' : IDL.Null,
+  'guest' : IDL.Null,
+});
+export const AccountName = IDL.Text;
+export const Nickname = IDL.Text;
+export const AppError = IDL.Variant({
+  'other' : IDL.Text,
+  'invalidSession' : IDL.Null,
+  'userAlreadyExists' : IDL.Null,
+  'notAuthenticated' : IDL.Null,
+  'weakPassword' : IDL.Null,
+  'invalidCredentials' : IDL.Null,
+  'invalidAccountName' : IDL.Null,
+});
 export const Weather = IDL.Record({
   'lat' : IDL.Float64,
   'lon' : IDL.Float64,
@@ -41,17 +57,68 @@ export const TransformationOutput = IDL.Record({
 });
 
 export const idlService = IDL.Service({
-  'getWeather' : IDL.Func([IDL.Text], [Weather], []),
+  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createAccount' : IDL.Func(
+      [AccountName, Nickname, IDL.Text],
+      [IDL.Opt(AppError)],
+      [],
+    ),
+  'getActorId' : IDL.Func([IDL.Text], [IDL.Opt(AppError)], ['query']),
+  'getAllUsers' : IDL.Func(
+      [],
+      [
+        IDL.Record({
+          'accountCount' : IDL.Nat,
+          'sessionCount' : IDL.Nat,
+          'userCount' : IDL.Nat,
+        }),
+      ],
+      [],
+    ),
+  'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getCurrentAccount' : IDL.Func([IDL.Text], [IDL.Opt(AppError)], ['query']),
+  'getWeather' : IDL.Func([IDL.Principal, IDL.Text, IDL.Text], [Weather], []),
+  'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'isLoggedIn' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+  'loginWithAccountName' : IDL.Func(
+      [AccountName, IDL.Text],
+      [IDL.Opt(AppError)],
+      [],
+    ),
+  'logout' : IDL.Func([IDL.Text], [IDL.Opt(AppError)], []),
   'transform' : IDL.Func(
       [TransformationInput],
       [TransformationOutput],
       ['query'],
+    ),
+  'updateNickname' : IDL.Func([Nickname, IDL.Text], [IDL.Opt(AppError)], []),
+  'verifyCredentials' : IDL.Func(
+      [AccountName, IDL.Text],
+      [IDL.Opt(AppError)],
+      [],
     ),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const UserRole = IDL.Variant({
+    'admin' : IDL.Null,
+    'user' : IDL.Null,
+    'guest' : IDL.Null,
+  });
+  const AccountName = IDL.Text;
+  const Nickname = IDL.Text;
+  const AppError = IDL.Variant({
+    'other' : IDL.Text,
+    'invalidSession' : IDL.Null,
+    'userAlreadyExists' : IDL.Null,
+    'notAuthenticated' : IDL.Null,
+    'weakPassword' : IDL.Null,
+    'invalidCredentials' : IDL.Null,
+    'invalidAccountName' : IDL.Null,
+  });
   const Weather = IDL.Record({
     'lat' : IDL.Float64,
     'lon' : IDL.Float64,
@@ -82,11 +149,46 @@ export const idlFactory = ({ IDL }) => {
   });
   
   return IDL.Service({
-    'getWeather' : IDL.Func([IDL.Text], [Weather], []),
+    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createAccount' : IDL.Func(
+        [AccountName, Nickname, IDL.Text],
+        [IDL.Opt(AppError)],
+        [],
+      ),
+    'getActorId' : IDL.Func([IDL.Text], [IDL.Opt(AppError)], ['query']),
+    'getAllUsers' : IDL.Func(
+        [],
+        [
+          IDL.Record({
+            'accountCount' : IDL.Nat,
+            'sessionCount' : IDL.Nat,
+            'userCount' : IDL.Nat,
+          }),
+        ],
+        [],
+      ),
+    'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getCurrentAccount' : IDL.Func([IDL.Text], [IDL.Opt(AppError)], ['query']),
+    'getWeather' : IDL.Func([IDL.Principal, IDL.Text, IDL.Text], [Weather], []),
+    'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'isLoggedIn' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+    'loginWithAccountName' : IDL.Func(
+        [AccountName, IDL.Text],
+        [IDL.Opt(AppError)],
+        [],
+      ),
+    'logout' : IDL.Func([IDL.Text], [IDL.Opt(AppError)], []),
     'transform' : IDL.Func(
         [TransformationInput],
         [TransformationOutput],
         ['query'],
+      ),
+    'updateNickname' : IDL.Func([Nickname, IDL.Text], [IDL.Opt(AppError)], []),
+    'verifyCredentials' : IDL.Func(
+        [AccountName, IDL.Text],
+        [IDL.Opt(AppError)],
+        [],
       ),
   });
 };

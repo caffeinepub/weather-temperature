@@ -89,15 +89,12 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface TransformationInput {
-    context: Uint8Array;
-    response: http_request_result;
-}
 export interface TransformationOutput {
     status: bigint;
     body: Uint8Array;
     headers: Array<http_header>;
 }
+export type AccountName = string;
 export interface Weather {
     lat: number;
     lon: number;
@@ -111,6 +108,33 @@ export interface Weather {
     feelsLike: number;
     weatherCode: bigint;
 }
+export interface TransformationInput {
+    context: Uint8Array;
+    response: http_request_result;
+}
+export type AppError = {
+    __kind__: "other";
+    other: string;
+} | {
+    __kind__: "invalidSession";
+    invalidSession: null;
+} | {
+    __kind__: "userAlreadyExists";
+    userAlreadyExists: null;
+} | {
+    __kind__: "notAuthenticated";
+    notAuthenticated: null;
+} | {
+    __kind__: "weakPassword";
+    weakPassword: null;
+} | {
+    __kind__: "invalidCredentials";
+    invalidCredentials: null;
+} | {
+    __kind__: "invalidAccountName";
+    invalidAccountName: null;
+};
+export type Nickname = string;
 export interface http_header {
     value: string;
     name: string;
@@ -120,24 +144,205 @@ export interface http_request_result {
     body: Uint8Array;
     headers: Array<http_header>;
 }
-export interface backendInterface {
-    getWeather(cityName: string): Promise<Weather>;
-    transform(input: TransformationInput): Promise<TransformationOutput>;
+export enum UserRole {
+    admin = "admin",
+    user = "user",
+    guest = "guest"
 }
+export interface backendInterface {
+    _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
+    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    createAccount(accountName: AccountName, nickname: Nickname, password: string): Promise<AppError | null>;
+    getActorId(sessionToken: string): Promise<AppError | null>;
+    getAllUsers(): Promise<{
+        accountCount: bigint;
+        sessionCount: bigint;
+        userCount: bigint;
+    }>;
+    getCallerUserRole(): Promise<UserRole>;
+    getCurrentAccount(sessionToken: string): Promise<AppError | null>;
+    getWeather(_actorId: Principal, _sessionToken: string, cityName: string): Promise<Weather>;
+    isCallerAdmin(): Promise<boolean>;
+    isLoggedIn(sessionToken: string): Promise<boolean>;
+    loginWithAccountName(accountName: AccountName, password: string): Promise<AppError | null>;
+    logout(sessionToken: string): Promise<AppError | null>;
+    transform(input: TransformationInput): Promise<TransformationOutput>;
+    updateNickname(newNickname: Nickname, sessionToken: string): Promise<AppError | null>;
+    verifyCredentials(accountName: AccountName, password: string): Promise<AppError | null>;
+}
+import type { AppError as _AppError, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
-    async getWeather(arg0: string): Promise<Weather> {
+    async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.getWeather(arg0);
+                const result = await this.actor._initializeAccessControlWithSecret(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getWeather(arg0);
+            const result = await this.actor._initializeAccessControlWithSecret(arg0);
             return result;
+        }
+    }
+    async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async createAccount(arg0: AccountName, arg1: Nickname, arg2: string): Promise<AppError | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createAccount(arg0, arg1, arg2);
+                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createAccount(arg0, arg1, arg2);
+            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getActorId(arg0: string): Promise<AppError | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getActorId(arg0);
+                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getActorId(arg0);
+            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getAllUsers(): Promise<{
+        accountCount: bigint;
+        sessionCount: bigint;
+        userCount: bigint;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllUsers();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllUsers();
+            return result;
+        }
+    }
+    async getCallerUserRole(): Promise<UserRole> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCallerUserRole();
+                return from_candid_UserRole_n6(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCallerUserRole();
+            return from_candid_UserRole_n6(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getCurrentAccount(arg0: string): Promise<AppError | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCurrentAccount(arg0);
+                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCurrentAccount(arg0);
+            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getWeather(arg0: Principal, arg1: string, arg2: string): Promise<Weather> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getWeather(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getWeather(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async isCallerAdmin(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isCallerAdmin();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isCallerAdmin();
+            return result;
+        }
+    }
+    async isLoggedIn(arg0: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isLoggedIn(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isLoggedIn(arg0);
+            return result;
+        }
+    }
+    async loginWithAccountName(arg0: AccountName, arg1: string): Promise<AppError | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.loginWithAccountName(arg0, arg1);
+                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.loginWithAccountName(arg0, arg1);
+            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async logout(arg0: string): Promise<AppError | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.logout(arg0);
+                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.logout(arg0);
+            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
         }
     }
     async transform(arg0: TransformationInput): Promise<TransformationOutput> {
@@ -154,6 +359,129 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async updateNickname(arg0: Nickname, arg1: string): Promise<AppError | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateNickname(arg0, arg1);
+                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateNickname(arg0, arg1);
+            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async verifyCredentials(arg0: AccountName, arg1: string): Promise<AppError | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.verifyCredentials(arg0, arg1);
+                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.verifyCredentials(arg0, arg1);
+            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+        }
+    }
+}
+function from_candid_AppError_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AppError): AppError {
+    return from_candid_variant_n5(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserRole_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n7(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_AppError]): AppError | null {
+    return value.length === 0 ? null : from_candid_AppError_n4(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    other: string;
+} | {
+    invalidSession: null;
+} | {
+    userAlreadyExists: null;
+} | {
+    notAuthenticated: null;
+} | {
+    weakPassword: null;
+} | {
+    invalidCredentials: null;
+} | {
+    invalidAccountName: null;
+}): {
+    __kind__: "other";
+    other: string;
+} | {
+    __kind__: "invalidSession";
+    invalidSession: null;
+} | {
+    __kind__: "userAlreadyExists";
+    userAlreadyExists: null;
+} | {
+    __kind__: "notAuthenticated";
+    notAuthenticated: null;
+} | {
+    __kind__: "weakPassword";
+    weakPassword: null;
+} | {
+    __kind__: "invalidCredentials";
+    invalidCredentials: null;
+} | {
+    __kind__: "invalidAccountName";
+    invalidAccountName: null;
+} {
+    return "other" in value ? {
+        __kind__: "other",
+        other: value.other
+    } : "invalidSession" in value ? {
+        __kind__: "invalidSession",
+        invalidSession: value.invalidSession
+    } : "userAlreadyExists" in value ? {
+        __kind__: "userAlreadyExists",
+        userAlreadyExists: value.userAlreadyExists
+    } : "notAuthenticated" in value ? {
+        __kind__: "notAuthenticated",
+        notAuthenticated: value.notAuthenticated
+    } : "weakPassword" in value ? {
+        __kind__: "weakPassword",
+        weakPassword: value.weakPassword
+    } : "invalidCredentials" in value ? {
+        __kind__: "invalidCredentials",
+        invalidCredentials: value.invalidCredentials
+    } : "invalidAccountName" in value ? {
+        __kind__: "invalidAccountName",
+        invalidAccountName: value.invalidAccountName
+    } : value;
+}
+function from_candid_variant_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    admin: null;
+} | {
+    user: null;
+} | {
+    guest: null;
+}): UserRole {
+    return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
+}
+function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
+    return to_candid_variant_n2(_uploadFile, _downloadFile, value);
+}
+function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
+    admin: null;
+} | {
+    user: null;
+} | {
+    guest: null;
+} {
+    return value == UserRole.admin ? {
+        admin: null
+    } : value == UserRole.user ? {
+        user: null
+    } : value == UserRole.guest ? {
+        guest: null
+    } : value;
 }
 export interface CreateActorOptions {
     agent?: Agent;

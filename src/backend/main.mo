@@ -1,10 +1,240 @@
+import Map "mo:core/Map";
+import Nat "mo:core/Nat";
 import Text "mo:core/Text";
-import Float "mo:core/Float";
+import Principal "mo:core/Principal";
 import Int "mo:core/Int";
 import OutCall "http-outcalls/outcall";
+import Migration "migration";
 import Runtime "mo:core/Runtime";
+import MixinAuthorization "authorization/MixinAuthorization";
+import AccessControl "authorization/access-control";
 
+(with migration = Migration.run)
 actor {
+  let accessControlState = AccessControl.initState();
+  include MixinAuthorization(accessControlState);
+
+  type UserId = Principal.Principal;
+  type SessionToken = Text;
+
+  type HashedPassword = Text;
+  type AccountName = Text;
+  type Nickname = Text;
+
+  type AppError = {
+    #userAlreadyExists;
+    #invalidAccountName;
+    #weakPassword;
+    #invalidCredentials;
+    #invalidSession;
+    #notAuthenticated;
+    #other : Text;
+  };
+
+  type Account = {
+    accountName : AccountName;
+    nickname : Nickname;
+    hashedPassword : HashedPassword;
+  };
+
+  var accountIdCounter : Nat = 0;
+
+  let users = Map.empty<UserId, Account>();
+  let accounts = Map.empty<AccountName, UserId>();
+  let sessions = Map.empty<UserId, SessionToken>();
+
+  func validateAccountName(accountName : AccountName) : Bool {
+    accountName.size() >= 3;
+  };
+
+  func validatePasswordStrength(password : Text) : Bool {
+    password.size() >= 8;
+  };
+
+  // Public endpoint - anyone can create an account
+  public shared ({ caller }) func createAccount(accountName : AccountName, nickname : Nickname, password : Text) : async ?AppError {
+    if (users.containsKey(caller)) { return ?#userAlreadyExists };
+    if (not validateAccountName(accountName)) {
+      return ?#invalidAccountName;
+    };
+    if (not validatePasswordStrength(password)) {
+      return ?#weakPassword;
+    };
+    if (accounts.containsKey(accountName)) { return ?#userAlreadyExists };
+
+    let hashedPassword = password;
+    let newAccount : Account = {
+      accountName;
+      nickname;
+      hashedPassword;
+    };
+    users.add(caller, newAccount);
+    accounts.add(accountName, caller);
+
+    // Assign user role to new account
+    AccessControl.assignRole(accessControlState, caller, caller, #user);
+
+    accountIdCounter += 1;
+    null;
+  };
+
+  func verifyPassword(password : Text, hashedPassword : HashedPassword) : Bool {
+    password == hashedPassword;
+  };
+
+  func generateSessionToken(userId : UserId) : SessionToken {
+    "session_" # userId.toText() # "_" # accountIdCounter.toText();
+  };
+
+  func cleanedActorId(actorId : Principal) : Text {
+    actorId.toText();
+  };
+
+  func verifySessionToken(actorId : Principal, token : SessionToken) : Bool {
+    switch (sessions.get(actorId)) {
+      case (null) { false };
+      case (?storedToken) { storedToken == token };
+    };
+  };
+
+  public shared ({ caller }) func verifyCredentials(accountName : AccountName, password : Text) : async ?AppError {
+    let maybeAccountId = accounts.get(accountName);
+    if (maybeAccountId == null) { return ?#invalidCredentials };
+
+    switch (maybeAccountId) {
+      case (null) { ?#invalidCredentials };
+      case (?_accountId) {
+        let _maybeAccount = users.get(caller);
+        switch (_maybeAccount) {
+          case (null) { ?#invalidCredentials };
+          case (?account) {
+            if (verifyPassword(password, account.hashedPassword)) {
+              null;
+            } else {
+              ?#invalidCredentials;
+            };
+          };
+        };
+      };
+    };
+  };
+
+  // Public endpoint - anyone can attempt login
+  public shared ({ caller }) func loginWithAccountName(accountName : AccountName, password : Text) : async ?AppError {
+    let verifyResult = await verifyCredentials(accountName, password);
+
+    if (verifyResult == null) {
+      let token = generateSessionToken(caller);
+      sessions.add(caller, token);
+      null;
+    } else {
+      ?(#invalidCredentials : AppError);
+    };
+  };
+
+  func isSessionValid(caller : UserId, sessionToken : Text) : Bool {
+    switch (sessions.get(caller)) {
+      case (?storedToken) { storedToken == sessionToken };
+      case (null) { false };
+    };
+  };
+
+  // User-only endpoint - requires valid session
+  public shared ({ caller }) func logout(sessionToken : Text) : async ?AppError {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can logout");
+    };
+    if (isSessionValid(caller, sessionToken)) {
+      sessions.remove(caller);
+      null;
+    } else {
+      ?(#invalidSession : AppError);
+    };
+  };
+
+  // User-only endpoint
+  public query ({ caller }) func getActorId(sessionToken : Text) : async ?AppError {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      return ?#notAuthenticated;
+    };
+    switch (sessions.get(caller)) {
+      case (null) { ?#notAuthenticated };
+      case (?storedToken) {
+        if (storedToken == sessionToken) {
+          null;
+        } else {
+          ?#notAuthenticated;
+        };
+      };
+    };
+  };
+
+  // User-only endpoint
+  public query ({ caller }) func isLoggedIn(sessionToken : Text) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      return false;
+    };
+    isSessionValid(caller, sessionToken);
+  };
+
+  // User-only endpoint
+  public shared ({ caller }) func updateNickname(newNickname : Nickname, sessionToken : Text) : async ?AppError {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update nickname");
+    };
+    switch (sessions.get(caller)) {
+      case (null) { ?#notAuthenticated };
+      case (?token) {
+        if (token == sessionToken) {
+          switch (users.get(caller)) {
+            case (null) { ?(#other("Account not found") : AppError) };
+            case (?account) {
+              let updatedAccount = { account with nickname = newNickname };
+              users.add(caller, updatedAccount);
+              null;
+            };
+          };
+        } else {
+          ?(#notAuthenticated : AppError);
+        };
+      };
+    };
+  };
+
+  // User-only endpoint
+  public query ({ caller }) func getCurrentAccount(sessionToken : Text) : async ?AppError {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      return ?#notAuthenticated;
+    };
+    switch (sessions.get(caller)) {
+      case (null) { ?#notAuthenticated };
+      case (?token) {
+        if (token == sessionToken) {
+          switch (users.get(caller)) {
+            case (null) { ?(#other("Account not found") : AppError) };
+            case (?account) {
+              null;
+            };
+          };
+        } else {
+          ?(#notAuthenticated : AppError);
+        };
+      };
+    };
+  };
+
+  // Admin-only endpoint - sensitive data
+  public shared ({ caller }) func getAllUsers() : async { userCount : Nat; accountCount : Nat; sessionCount : Nat } {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view all users");
+    };
+    {
+      userCount = users.size();
+      accountCount = accounts.size();
+      sessionCount = sessions.size();
+    };
+  };
+
   type Weather = {
     cityName : Text;
     lat : Float;
@@ -17,6 +247,10 @@ actor {
     windSpeed : Float;
     weatherCode : Int;
     timezone : Text;
+  };
+
+  public query ({ caller }) func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+    OutCall.transform(input);
   };
 
   func charToDigit(c : Char) : ?Nat {
@@ -95,7 +329,6 @@ actor {
     if (negative) { ?(-result) } else { ?result };
   };
 
-  // Get the text after "key": in JSON
   func valueAfterKey(json : Text, key : Text) : ?Text {
     let needle = "\"" # key # "\":";
     let parts = json.split(#text(needle)).toArray();
@@ -103,7 +336,6 @@ actor {
     ?parts[1];
   };
 
-  // Read characters until a JSON delimiter
   func takeUntilDelimiter(s : Text) : Text {
     var result = "";
     label l for (c in s.toIter()) {
@@ -133,7 +365,6 @@ actor {
   };
 
   func extractArrayFirstFloat(json : Text, key : Text) : ?Float {
-    // Try both "key":[ and "key": [ (with space)
     let needle1 = "\"" # key # "\":[";
     let needle2 = "\"" # key # "\": [";
     let parts1 = json.split(#text(needle1)).toArray();
@@ -144,7 +375,6 @@ actor {
     parseFloat(takeUntilDelimiter(afterArr));
   };
 
-  // Extract the content after an object key (the JSON after "key":{)
   func sectionAfter(json : Text, sectionKey : Text) : ?Text {
     let needle1 = "\"" # sectionKey # "\":{";
     let needle2 = "\"" # sectionKey # "\": {";
@@ -155,11 +385,17 @@ actor {
     else { null };
   };
 
-  public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
-    OutCall.transform(input);
-  };
+  // User-only endpoint - requires authentication
+  public shared ({ caller }) func getWeather(_actorId : Principal, _sessionToken : Text, cityName : Text) : async Weather {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get weather data");
+    };
 
-  public shared func getWeather(cityName : Text) : async Weather {
+    // Verify session token
+    if (not isSessionValid(caller, _sessionToken)) {
+      Runtime.trap("Invalid session token");
+    };
+
     let geoUrl = "https://geocoding-api.open-meteo.com/v1/search?name=" # cityName # "&count=1&language=en&format=json";
     let geoJson = await OutCall.httpGetRequest(geoUrl, [], transform);
 
@@ -183,7 +419,6 @@ actor {
     let weatherUrl = "https://api.open-meteo.com/v1/forecast?latitude=" # lat.toText() # "&longitude=" # lon.toText() # "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1";
     let weatherJson = await OutCall.httpGetRequest(weatherUrl, [], transform);
 
-    // Extract current weather from the "current" section to avoid matching "current_units"
     let currentSection = switch (sectionAfter(weatherJson, "current")) {
       case null { Runtime.trap("Cannot find current section in weather response") };
       case (?v) { v };
@@ -210,7 +445,6 @@ actor {
       case (?v) { v };
     };
 
-    // Extract daily section for min/max
     let dailySection = switch (sectionAfter(weatherJson, "daily")) {
       case null { weatherJson };
       case (?v) { v };

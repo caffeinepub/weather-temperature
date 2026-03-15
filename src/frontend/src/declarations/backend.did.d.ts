@@ -10,6 +10,15 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export type AccountName = string;
+export type AppError = { 'other' : string } |
+  { 'invalidSession' : null } |
+  { 'userAlreadyExists' : null } |
+  { 'notAuthenticated' : null } |
+  { 'weakPassword' : null } |
+  { 'invalidCredentials' : null } |
+  { 'invalidAccountName' : null };
+export type Nickname = string;
 export interface TransformationInput {
   'context' : Uint8Array,
   'response' : http_request_result,
@@ -19,6 +28,9 @@ export interface TransformationOutput {
   'body' : Uint8Array,
   'headers' : Array<http_header>,
 }
+export type UserRole = { 'admin' : null } |
+  { 'user' : null } |
+  { 'guest' : null };
 export interface Weather {
   'lat' : number,
   'lon' : number,
@@ -39,8 +51,27 @@ export interface http_request_result {
   'headers' : Array<http_header>,
 }
 export interface _SERVICE {
-  'getWeather' : ActorMethod<[string], Weather>,
+  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createAccount' : ActorMethod<
+    [AccountName, Nickname, string],
+    [] | [AppError]
+  >,
+  'getActorId' : ActorMethod<[string], [] | [AppError]>,
+  'getAllUsers' : ActorMethod<
+    [],
+    { 'accountCount' : bigint, 'sessionCount' : bigint, 'userCount' : bigint }
+  >,
+  'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getCurrentAccount' : ActorMethod<[string], [] | [AppError]>,
+  'getWeather' : ActorMethod<[Principal, string, string], Weather>,
+  'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isLoggedIn' : ActorMethod<[string], boolean>,
+  'loginWithAccountName' : ActorMethod<[AccountName, string], [] | [AppError]>,
+  'logout' : ActorMethod<[string], [] | [AppError]>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'updateNickname' : ActorMethod<[Nickname, string], [] | [AppError]>,
+  'verifyCredentials' : ActorMethod<[AccountName, string], [] | [AppError]>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

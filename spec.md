@@ -1,35 +1,36 @@
-# TRUE TEMP — UI Redesign
+# TRUE TEMP
 
 ## Current State
-The app uses a glassmorphism dark/blue theme with OKLCH tokens, backdrop-blur cards, and animated weather backgrounds. All three pages (Dashboard, Studio, Profile) share this style.
+Full-featured three-page weather app (Dashboard, Studio, Profile) with local localStorage-based user profile (nickname, avatars, streaks). No authentication system. All data is stored client-side.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Centered page header with large bold "TRUE TEMP" title and "REAL WEATHER, RIGHT NOW" subtitle
-- Bell notification icon button + crescent/moon theme toggle icon button in top-right of header
-- Clean white card design replacing glassmorphism
-- Search bar redesign: full-width text input + blue "Search" button + circular outline location pin button inline
-- Main weather card: location name with pin icon, condition pill badge (outline style), very large bold temperature, ↑max/↓min inline, "Feels like" line, metrics grid (Humidity, Wind, MAX, MIN)
-- Rain predictor as a subtle white card with emoji
-- Bottom nav: light blue active pill background for active tab, palette icon for Studio, person icon for Profile
+- Backend authorization system using the `authorization` Caffeine component (username + password, role-based)
+- Login/Signup splash screen shown on first visit (before Dashboard)
+- Animated weather background on the auth screen (reusing existing weather animations)
+- TRUE TEMP logo/branding on the auth screen
+- Two tabs on auth screen: "Log In" and "Sign Up"
+- Logout button on the Profile page
 
 ### Modify
-- Background: very light blue-white (not gradient/animated)
-- All cards: plain white with soft box shadow, rounded corners
-- Typography: dark navy for headings/temperature, blue for accents
-- Remove animated weather background canvas overlay from Dashboard view
-- index.css color tokens to match light clean design
-- BottomNav icons updated to match screenshot (cloud-sun for Dashboard, palette for Studio, person for Profile)
+- App.tsx: wrap main app in auth gate -- show login screen if not authenticated, show Dashboard if authenticated
+- ProfilePage.tsx: add logout option
 
 ### Remove
-- Glassmorphism backdrop-blur effect on cards
-- Dark animated gradient background on main dashboard
-- Old search layout (emoji buttons)
+- Nothing removed
 
 ## Implementation Plan
-1. Update `index.css` — new light color palette (white background, dark navy foreground, blue primary)
-2. Rewrite `DashboardPage.tsx` — match screenshot layout exactly: header block, search row, rain card, main weather card with all metrics
-3. Update `App.tsx` — move theme/notification icons to header, remove WeatherBackground for light mode
-4. Update `BottomNav.tsx` — fix icons and active state styling
-5. Keep all data hooks and functionality intact, only change visual presentation
+1. Generate Motoko backend with authorization support
+2. Create `LoginPage.tsx` component with:
+   - Animated weather background (rain/sun animations)
+   - TRUE TEMP logo
+   - Sign Up tab: username + password fields + confirm password + "Create Account" button
+   - Log In tab: username + password fields + "Log In" button
+   - Error states for invalid credentials / username taken
+   - Loading state during auth calls
+3. Update `App.tsx` to check auth state on load:
+   - If not logged in: show `<LoginPage />`
+   - If logged in: show existing three-page app
+4. Update `ProfilePage.tsx` to add a "Log Out" button that clears session and returns to login screen
+5. Wire up backend auth calls (register, login, logout) using generated `backend.d.ts` bindings
