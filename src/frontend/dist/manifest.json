@@ -1,0 +1,17 @@
+{
+  "name": "TRUE TEMP",
+  "short_name": "TRUE TEMP",
+  "description": "Comprehensive weather app for India — cities and villages",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0d1b2a",
+  "background_color": "#0d1b2a",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

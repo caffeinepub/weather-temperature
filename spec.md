@@ -1,47 +1,35 @@
-# TRUE TEMP
+# TRUE TEMP — UI Redesign
 
 ## Current State
-A full-featured weather app for India with:
-- Current weather, feels like, humidity, wind speed, UV index
-- Hourly and 7-day forecasts
-- AQI card, UV card, location card (map + text)
-- Clothing suggestions, allergy/commute forecasts
-- Morning/afternoon briefing notifications
-- Sun/moon tracking with arc and moon phase
-- Historical trivia (last year comparison)
-- Dynamic animated backgrounds reacting to weather + theme
-- Light/dark theme toggle (smooth crossfade)
-- Google AdSense banners (top + bottom)
-- PWA-installable
-- All data fetched frontend-only via open-meteo + OpenStreetMap
+The app uses a glassmorphism dark/blue theme with OKLCH tokens, backdrop-blur cards, and animated weather backgrounds. All three pages (Dashboard, Studio, Profile) share this style.
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Daily Visit Streak**: Track consecutive daily app opens via localStorage. Show streak count with fire badge (🔥) and milestone animations (3, 7, 14, 30 days). Display streak card in the UI.
-- **Haptic Feedback**: Use `navigator.vibrate()` when scrolling hourly temperature slider and when a severe weather alert fires. Unique vibration pattern for alerts (e.g. 200ms-100ms-200ms-100ms-400ms).
-- **Share Weather Graphic**: "Share" button that uses HTML Canvas to render a branded weather card (current temp, condition, high/low, location, TRUE TEMP watermark) as a PNG. Use Web Share API if available, else download the image.
-- **Camera Weather Overlay**: Button to open device camera (using getUserMedia). Capture a photo and overlay current temperature + weather icon on top. Allow saving/sharing the result.
-- **Hidden Easter Egg**: When temperature is exactly 0°C or drops below 0°C, show a tiny pixel-art snowman animation. When it's extremely hot (>40°C), show a melting pixel-art sun.
-- **Dew Point Card**: Show dew point alongside humidity. open-meteo provides dew point at 2m. Include comfort label ("Comfortable", "Humid", "Very Muggy").
-- **Barometric Pressure + Trend**: Show surface pressure (hPa) with a trend arrow (rising ↑, falling ↓, steady →) based on comparison of last 3 hours of pressure data. Include storm warning if pressure drops rapidly.
-- **Smart Offline Mode**: Service worker caches last successful weather fetch in localStorage with timestamp. When offline, show cached data with a "Last updated at [time]" yellow banner. Show offline indicator in header.
+- Centered page header with large bold "TRUE TEMP" title and "REAL WEATHER, RIGHT NOW" subtitle
+- Bell notification icon button + crescent/moon theme toggle icon button in top-right of header
+- Clean white card design replacing glassmorphism
+- Search bar redesign: full-width text input + blue "Search" button + circular outline location pin button inline
+- Main weather card: location name with pin icon, condition pill badge (outline style), very large bold temperature, ↑max/↓min inline, "Feels like" line, metrics grid (Humidity, Wind, MAX, MIN)
+- Rain predictor as a subtle white card with emoji
+- Bottom nav: light blue active pill background for active tab, palette icon for Studio, person icon for Profile
 
 ### Modify
-- Severe weather alert trigger should also call `navigator.vibrate([200,100,200,100,400])` in addition to existing in-app/push behavior.
-- Hourly forecast scroll should call `navigator.vibrate(10)` on each scroll step (short tick).
+- Background: very light blue-white (not gradient/animated)
+- All cards: plain white with soft box shadow, rounded corners
+- Typography: dark navy for headings/temperature, blue for accents
+- Remove animated weather background canvas overlay from Dashboard view
+- index.css color tokens to match light clean design
+- BottomNav icons updated to match screenshot (cloud-sun for Dashboard, palette for Studio, person for Profile)
 
 ### Remove
-- Nothing removed.
+- Glassmorphism backdrop-blur effect on cards
+- Dark animated gradient background on main dashboard
+- Old search layout (emoji buttons)
 
 ## Implementation Plan
-1. Add `useStreak` hook: reads/writes localStorage keys `truetemp_streak_count`, `truetemp_streak_last_date`. Increment if last visit was yesterday; reset if >1 day gap; show milestone modals at 3/7/14/30.
-2. Add `StreakCard` component showing streak count, fire badge, milestone message.
-3. Add haptic utility `haptic(pattern)` wrapping `navigator.vibrate` with feature detection.
-4. Wire haptic to hourly scroll handler and severe alert trigger.
-5. Add `ShareCard` component: renders a Canvas-based weather graphic, triggers Web Share API or PNG download.
-6. Add `CameraOverlay` component: opens camera via `getUserMedia`, overlays weather text on canvas snapshot, shows save/share button.
-7. Add easter egg logic: monitor current temp, conditionally render pixel-art animations (CSS/canvas sprites).
-8. Fetch `dew_point_2m` from open-meteo current weather; add `DewPointCard`.
-9. Fetch `surface_pressure` with hourly data (last 3 hours); compute trend; add `PressureCard`.
-10. Implement offline detection (`window.addEventListener('online'/'offline')`); cache last fetch to localStorage; show offline banner when `navigator.onLine === false`.
+1. Update `index.css` — new light color palette (white background, dark navy foreground, blue primary)
+2. Rewrite `DashboardPage.tsx` — match screenshot layout exactly: header block, search row, rain card, main weather card with all metrics
+3. Update `App.tsx` — move theme/notification icons to header, remove WeatherBackground for light mode
+4. Update `BottomNav.tsx` — fix icons and active state styling
+5. Keep all data hooks and functionality intact, only change visual presentation
