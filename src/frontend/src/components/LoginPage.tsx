@@ -200,7 +200,6 @@ export function LoginPage({ auth }: LoginPageProps) {
   const [signupConfirm, setSignupConfirm] = useState("");
   const [signupShowPass, setSignupShowPass] = useState(false);
   const [signupError, setSignupError] = useState<string | null>(null);
-  const [signupLoading, setSignupLoading] = useState(false);
 
   const handleLogin = useCallback(
     async (e: React.FormEvent) => {
@@ -218,6 +217,15 @@ export function LoginPage({ auth }: LoginPageProps) {
     [auth, loginUser, loginPass],
   );
 
+  // Show deferred registration error (from optimistic background call)
+  useEffect(() => {
+    if (auth.registrationError) {
+      setTab("signup");
+      setSignupError(auth.registrationError);
+      auth.clearRegistrationError();
+    }
+  }, [auth, auth.registrationError]);
+
   const handleSignup = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -233,10 +241,10 @@ export function LoginPage({ auth }: LoginPageProps) {
         setSignupError("Password must be at least 8 characters.");
         return;
       }
-      setSignupLoading(true);
       setSignupError(null);
+      // Optimistic: auth.register() sets isAuthenticated=true immediately
+      // and completes the backend call in the background.
       const err = await auth.register(signupUser.trim(), signupPass);
-      setSignupLoading(false);
       if (err) setSignupError(err);
     },
     [auth, signupUser, signupPass, signupConfirm],
@@ -302,7 +310,7 @@ export function LoginPage({ auth }: LoginPageProps) {
               <TabsTrigger
                 value="login"
                 data-ocid="auth.tab"
-                className="flex-1 text-sm font-semibold data-[state=active]:text-white"
+                className="flex-1 text-sm font-semibold text-white/60 data-[state=active]:text-white data-[state=active]:bg-white/10"
                 style={{ fontFamily: "var(--font-body)" }}
               >
                 Log In
@@ -310,7 +318,7 @@ export function LoginPage({ auth }: LoginPageProps) {
               <TabsTrigger
                 value="signup"
                 data-ocid="auth.tab"
-                className="flex-1 text-sm font-semibold data-[state=active]:text-white"
+                className="flex-1 text-sm font-semibold text-white/60 data-[state=active]:text-white data-[state=active]:bg-white/10"
                 style={{ fontFamily: "var(--font-body)" }}
               >
                 Sign Up
@@ -439,7 +447,7 @@ export function LoginPage({ auth }: LoginPageProps) {
                     autoComplete="username"
                     value={signupUser}
                     onChange={(e) => setSignupUser(e.target.value)}
-                    disabled={signupLoading}
+                    disabled={false}
                     className="bg-transparent border-white/10 text-white placeholder:text-white/30 focus:border-sky-500/50"
                   />
                 </div>
@@ -461,7 +469,7 @@ export function LoginPage({ auth }: LoginPageProps) {
                       autoComplete="new-password"
                       value={signupPass}
                       onChange={(e) => setSignupPass(e.target.value)}
-                      disabled={signupLoading}
+                      disabled={false}
                       className="bg-transparent border-white/10 text-white placeholder:text-white/30 focus:border-sky-500/50 pr-10"
                     />
                     <button
@@ -495,7 +503,7 @@ export function LoginPage({ auth }: LoginPageProps) {
                     autoComplete="new-password"
                     value={signupConfirm}
                     onChange={(e) => setSignupConfirm(e.target.value)}
-                    disabled={signupLoading}
+                    disabled={false}
                     className="bg-transparent border-white/10 text-white placeholder:text-white/30 focus:border-sky-500/50"
                   />
                 </div>
@@ -519,27 +527,14 @@ export function LoginPage({ auth }: LoginPageProps) {
                 <Button
                   type="submit"
                   data-ocid="auth.submit_button"
-                  disabled={signupLoading}
                   className="w-full font-bold tracking-wide mt-1"
                   style={{
-                    background: signupLoading
-                      ? "oklch(0.4 0.1 220)"
-                      : "oklch(0.55 0.2 230)",
+                    background: "oklch(0.55 0.2 230)",
                     color: "white",
                     border: "none",
                   }}
                 >
-                  {signupLoading ? (
-                    <span
-                      data-ocid="auth.loading_state"
-                      className="flex items-center gap-2"
-                    >
-                      <Loader2 size={16} className="animate-spin" />
-                      Creating Account…
-                    </span>
-                  ) : (
-                    "Create Account"
-                  )}
+                  Create Account
                 </Button>
               </form>
             </TabsContent>

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useActor } from "./useActor";
 
 const SESSION_KEY = "truetemp_session_token";
+const PENDING_REGISTRATION_KEY = "truetemp_pending_registration";
 
 function getStoredToken(): string | null {
   try {
@@ -32,6 +33,8 @@ export type AuthState = {
   isInitializing: boolean;
   sessionToken: string | null;
   username: string | null;
+  registrationError: string | null;
+  clearRegistrationError: () => void;
   login: (username: string, password: string) => Promise<string | null>;
   register: (username: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
@@ -51,6 +54,27 @@ export function useAuth(): AuthState {
       return null;
     }
   });
+  // Stores a deferred error from optimistic registration
+  const [registrationError, setRegistrationError] = useState<string | null>(
+    () => {
+      try {
+        const err = localStorage.getItem(PENDING_REGISTRATION_KEY);
+        if (err) {
+          localStorage.removeItem(PENDING_REGISTRATION_KEY);
+          return err;
+        }
+      } catch {
+        /* ignore */
+      }
+      return null;
+    },
+  );
+  const actorRef = useRef(actor);
+  actorRef.current = actor;
+
+  const clearRegistrationError = useCallback(() => {
+    setRegistrationError(null);
+  }, []);
 
   // On actor ready, validate stored session
   useEffect(() => {
@@ -93,8 +117,6 @@ export function useAuth(): AuthState {
         if (err.__kind__ === "weakPassword") return "Password too weak.";
         return "Login failed. Please try again.";
       }
-      // Use accountName as the session token key — get a fresh session token
-      // The backend uses loginWithAccountName to set a session; we use username as the token
       const token = `${user}:${Date.now()}`;
       setStoredToken(token);
       setSessionToken(token);
@@ -113,20 +135,76 @@ export function useAuth(): AuthState {
   const register = useCallback(
     async (user: string, password: string): Promise<string | null> => {
       if (!actor) return "Not ready. Please wait.";
-      const err = await actor.createAccount(user, user, password);
-      if (err) {
-        if (err.__kind__ === "userAlreadyExists")
-          return "Username already taken. Try a different one.";
-        if (err.__kind__ === "weakPassword")
-          return "Password too weak (min 8 chars).";
-        if (err.__kind__ === "invalidAccountName")
-          return "Invalid username. Use letters, numbers, and underscores only.";
-        return "Registration failed. Please try again.";
+
+      // --- Optimistic: set auth state immediately and navigate to the app ---
+      const token = `${user}:${Date.now()}`;
+      setStoredToken(token);
+      setSessionToken(token);
+      try {
+        localStorage.setItem("truetemp_username", user);
+      } catch {
+        /* ignore */
       }
-      // Auto-login after successful registration
-      return login(user, password);
+      setUsername(user);
+      setIsAuthenticated(true);
+
+      // --- Backend call in background ---
+      actor
+        .createAccount(user, user, password)
+        .then((err) => {
+          if (!err) return; // success – nothing to do
+
+          // Revert optimistic auth
+          clearStoredToken();
+          try {
+            localStorage.removeItem("truetemp_username");
+          } catch {
+            /* ignore */
+          }
+
+          let msg = "Registration failed. Please try again.";
+          if (err.__kind__ === "userAlreadyExists")
+            msg = "Username already taken. Try a different one.";
+          else if (err.__kind__ === "weakPassword")
+            msg = "Password must be at least 8 characters.";
+          else if (err.__kind__ === "invalidAccountName")
+            msg =
+              "Invalid username. Use letters, numbers, and underscores only.";
+
+          // Persist the error so LoginPage can show it after re-mount
+          try {
+            localStorage.setItem(PENDING_REGISTRATION_KEY, msg);
+          } catch {
+            /* ignore */
+          }
+          setRegistrationError(msg);
+          setSessionToken(null);
+          setUsername(null);
+          setIsAuthenticated(false);
+        })
+        .catch(() => {
+          // Network error – revert silently, user will see login page again
+          clearStoredToken();
+          try {
+            localStorage.removeItem("truetemp_username");
+          } catch {
+            /* ignore */
+          }
+          const msg = "Registration failed. Please try again.";
+          try {
+            localStorage.setItem(PENDING_REGISTRATION_KEY, msg);
+          } catch {
+            /* ignore */
+          }
+          setRegistrationError(msg);
+          setSessionToken(null);
+          setUsername(null);
+          setIsAuthenticated(false);
+        });
+
+      return null; // always succeeds immediately
     },
-    [actor, login],
+    [actor],
   );
 
   const logout = useCallback(async () => {
@@ -154,6 +232,8 @@ export function useAuth(): AuthState {
     isInitializing,
     sessionToken,
     username,
+    registrationError,
+    clearRegistrationError,
     login,
     register,
     logout,

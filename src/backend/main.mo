@@ -4,12 +4,12 @@ import Text "mo:core/Text";
 import Principal "mo:core/Principal";
 import Int "mo:core/Int";
 import OutCall "http-outcalls/outcall";
-import Migration "migration";
+
 import Runtime "mo:core/Runtime";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-(with migration = Migration.run)
+
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
